@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telegram Tetris</title>
+    <meta charset="UTF-8">
+    <script src="https://telegram.org/js/games.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: white;
+            color: black;
+            margin: 0;
+            padding: 10px;
+            text-align: center;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: black;
+        }
+        .info {
+            margin: 10px;
+            font-size: 18px;
+        }
+        table {
+            margin: 10px auto;
+            border-collapse: collapse;
+        }
+        td, th {
+            border: 1px solid black;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тетрис</h1>
+    <div class="info">Текущий счет: <span id="score">0</span></div>
+    <table>
+        <tr>
+            <th>Лучший игрок</th>
+            <th>Рекорд</th>
+        </tr>
+        <tr>
+            <td id="top-player">-</td>
+            <td id="top-score">0</td>
+        </tr>
+        <tr>
+            <th>Мой рекорд</th>
+            <th>Рекорд</th>
+        </tr>
+        <tr>
+            <td>Вы</td>
+            <td id="my-best">0</td>
+        </tr>
+    </table>
+    <canvas id="tetris" width="200" height="400"></canvas>
+    <script>
+        // Настройки игры
+        const canvas = document.getElementById('tetris');
+        const ctx = canvas.getContext('2d');
+        const blockSize = 20;
+        const rows = 20;
+        const cols = 10;
+
+        // Игровое поле
+        let grid = Array(rows).fill().map(() => Array(cols).fill(0));
+
+        // Фигуры Тетриса (черно-белые)
+        const shapes = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[1, 1, 1], [0, 1, 0]], // T
+            [[1, 1, 1], [1, 0, 0]], // L
+            [[1, 1, 1], [0, 0, 1]], // J
+            [[1, 1, 0], [0, 1, 1]], // S
+            [[0, 1, 1], [1, 1, 0]]  // Z
+        ];
+
+        // Текущая фигура
+        let currentPiece = null;
+        let currentX = 0;
+        let currentY = 0;
+
+        // Счет
+        let score = 0;
+        let myBestScore = localStorage.getItem('myBestScore') || 0;
+        let topPlayer = localStorage.getItem('topPlayer') || '-';
+        let topScore = localStorage.getItem('topScore') || 0;
+
+        // Обновление таблицы рекордов
+        function updateLeaderboard() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('my-best').textContent = myBestScore;
+            document.getElementById('top-player').textContent = topPlayer;
+            document.getElementById('top-score').textContent = topScore;
+        }
+
+        // Создание новой фигуры
+        function newPiece() {
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            currentPiece = shape;
+            currentX = Math.floor(cols / 2) - Math.floor(shape[0].length / 2);
+            currentY = 0;
+
+            // Проверка на проигрыш
+            if (collision()) {
+                gameOver();
+            }
+        }
+
+        // Проверка столкновений
+        function collision() {
+            for (let y = 0; y < currentPiece.length; y++) {
+                for (let x = 0; x < currentPiece[y].length; x++) {
+                    if (currentPiece[y][x] !== 0) {
+                        const newX = currentX + x;
+                        const newY = currentY + y;
+
+                        if (
+                            newX < 0 ||
+                            newX >= cols ||
+                            newY >= rows ||
+                            (newY >= 0 && grid[newY][newX] !== 0)
+                        ) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Фиксация фигуры на поле
+        function lockPiece() {
+            for (let y = 0; y < currentPiece.length; y++) {
+                for (let x = 0; x < currentPiece[y].length; x++) {
+                    if (currentPiece[y][x] !== 0) {
+                        if (currentY + y >= 0) {
+                            grid[currentY + y][currentX + x] = 1;
+                        }
+                    }
+                }
+            }
+
+            // Проверка заполненных линий
+            clearLines();
+
+            // Новая фигура
+            newPiece();
+        }
+
+        // Очистка заполненных линий
+        function clearLines() {
+            let linesCleared = 0;
+            for (let y = rows - 1; y >= 0; y--) {
+                if (grid[y].every(cell => cell !== 0)) {
+                    grid.splice(y, 1);
+                    grid.unshift(Array(cols).fill(0));
+                    linesCleared++;
+                    y++; // Проверить ту же линию снова
+                }
+            }
+
+            // Увеличение счета
+            if (linesCleared > 0) {
+                score += linesCleared * 100;
+                updateLeaderboard();
+            }
+        }
+
+        // Отрисовка игры
+        function draw() {
+            // Очистка поля
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Отрисовка сетки
+            ctx.strokeStyle = '#333';
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    ctx.strokeRect(x * blockSize, y * blockSize, blockSize, blockSize);
+                }
+            }
+
+            // Отрисовка стакана
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x] !== 0) {
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
+                    }
+                }
+            }
+
+            // Отрисовка текущей фигуры
+            if (currentPiece) {
+                for (let y = 0; y < currentPiece.length; y++) {
+                    for (let x = 0; x < currentPiece[y].length; x++) {
+                        if (currentPiece[y][x] !== 0) {
+                            ctx.fillStyle = 'white';
+                            ctx.fillRect(
+                                (currentX + x) * blockSize,
+                                (currentY + y) * blockSize,
+                                blockSize,
+                                blockSize
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Управление
+        document.addEventListener('keydown', (e) => {
+            if (!currentPiece) return;
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    currentX--;
+                    if (collision()) currentX++;
+                    break;
+                case 'ArrowRight':
+                    currentX++;
+                    if (collision()) currentX--;
+                    break;
+                case 'ArrowDown':
+                    currentY++;
+                    if (collision()) {
+                        currentY--;
+                        lockPiece();
+                    }
+                    break;
+                case 'ArrowUp':
+                    rotatePiece();
+                    break;
+            }
+            draw();
+        });
+
+        // Вращение фигуры
+        function rotatePiece() {
+            const rotated = currentPiece[0].map((_, i) =>
+                currentPiece.map(row => row[i]).reverse()
+            );
+            const oldPiece = currentPiece;
+            currentPiece = rotated;
+            if (collision()) {
+                currentPiece = oldPiece;
+            }
+        }
+
+        // Игровой цикл
+        let dropInterval = 1000; // 1 секунда
+        let lastTime = 0;
+        function gameLoop(time = 0) {
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            if (deltaTime > dropInterval) {
+                currentY++;
+                if (collision()) {
+                    currentY--;
+                    lockPiece();
+                }
+                draw();
+                lastTime = time;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Конец игры
+        function gameOver() {
+            alert(`Игра окончена! Ваш счет: ${score}`);
+
+            // Обновление рекордов
+            if (score > myBestScore) {
+                myBestScore = score;
+                localStorage.setItem('myBestScore', myBestScore);
+            }
+
+            if (score > topScore) {
+                topScore = score;
+                topPlayer = "Вы";
+                localStorage.setItem('topScore', topScore);
+                localStorage.setItem('topPlayer', topPlayer);
+            }
+
+            // Сброс игры
+            grid = Array(rows).fill().map(() => Array(cols).fill(0));
+            score = 0;
+            updateLeaderboard();
+            newPiece();
+        }
+
+        // Запуск игры
+        updateLeaderboard();
+        newPiece();
+        draw();
+        gameLoop();
+
+        // Интеграция с Telegram
+        Telegram.WebApp.expand();
+        Telegram.WebApp.enableClosingConfirmation();
+    </script>
+</body>
+</html>

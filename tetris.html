@@ -12,6 +12,7 @@
             margin: 0;
             padding: 10px;
             text-align: center;
+            touch-action: manipulation;
         }
         canvas {
             display: block;
@@ -29,6 +30,21 @@
         td, th {
             border: 1px solid black;
             padding: 5px 10px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .control-btn {
+            padding: 15px 20px;
+            font-size: 18px;
+            background: #f0f0f0;
+            border: 2px solid black;
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
         }
     </style>
 </head>
@@ -55,6 +71,14 @@
     </tr>
 </table>
 <canvas id="tetris" width="200" height="400"></canvas>
+
+<div class="controls">
+    <div class="control-btn" id="left-btn">←</div>
+    <div class="control-btn" id="right-btn">→</div>
+    <div class="control-btn" id="rotate-btn">↻</div>
+    <div class="control-btn" id="down-btn">↓</div>
+</div>
+
 <script>
     // Настройки игры
     const canvas = document.getElementById('tetris');
@@ -81,6 +105,7 @@
     let currentPiece = null;
     let currentX = 0;
     let currentY = 0;
+    let currentRotation = 0;
 
     // Счет и уровень
     let score = 0;
@@ -93,6 +118,12 @@
     let dropInterval = 1000; // Начальная скорость: 1 секунда
     let lastTime = 0;
     let gameOverFlag = false;
+
+    // Элементы управления
+    const leftBtn = document.getElementById('left-btn');
+    const rightBtn = document.getElementById('right-btn');
+    const rotateBtn = document.getElementById('rotate-btn');
+    const downBtn = document.getElementById('down-btn');
 
     // Обновление таблицы рекордов
     function updateLeaderboard() {
@@ -109,6 +140,7 @@
         currentPiece = shape;
         currentX = Math.floor(cols / 2) - Math.floor(shape[0].length / 2);
         currentY = 0;
+        currentRotation = 0;
 
         // Проверка на проигрыш
         if (collision()) {
@@ -169,12 +201,12 @@
             }
         }
 
-        // Увеличение счета
+        // Увеличение счета (1 очко за линию)
         if (linesCleared > 0) {
-            score += linesCleared * 100;
+            score += linesCleared * 1;
 
-            // Увеличение уровня каждые 5000 очков
-            const newLevel = Math.floor(score / 5000) + 1;
+            // Увеличение уровня каждые 20 очков
+            const newLevel = Math.floor(score / 20) + 1;
             if (newLevel > level) {
                 level = newLevel;
                 dropInterval = Math.max(100, 1000 - (level - 1) * 200); // Увеличиваем скорость
@@ -226,32 +258,39 @@
         }
     }
 
-    // Управление
-    document.addEventListener('keydown', (e) => {
-        if (!currentPiece || gameOverFlag) return;
+    // Движение влево
+    function moveLeft() {
+        currentX--;
+        if (collision()) currentX++;
+        draw();
+    }
 
-        switch (e.key) {
-            case 'ArrowLeft':
-                currentX--;
-                if (collision()) currentX++;
-                break;
-            case 'ArrowRight':
-                currentX++;
-                if (collision()) currentX--;
-                break;
-            case 'ArrowDown':
-                currentY++;
-                if (collision()) {
-                    currentY--;
-                    lockPiece();
-                }
-                break;
-            case 'ArrowUp':
-                rotatePiece();
-                break;
+    // Движение вправо
+    function moveRight() {
+        currentX++;
+        if (collision()) currentX--;
+        draw();
+    }
+
+    // Движение вниз
+    function moveDown() {
+        currentY++;
+        if (collision()) {
+            currentY--;
+            lockPiece();
         }
         draw();
-    });
+    }
+
+    // Быстрое падение
+    function hardDrop() {
+        while (!collision()) {
+            currentY++;
+        }
+        currentY--;
+        lockPiece();
+        draw();
+    }
 
     // Вращение фигуры
     function rotatePiece() {
@@ -263,25 +302,16 @@
         if (collision()) {
             currentPiece = oldPiece;
         }
+        draw();
     }
 
     // Игровой цикл
     function gameLoop(time = 0) {
         if (gameOverFlag) return;
-
-        const deltaTime = time - lastTime;
-        lastTime = time;
-
-        if (deltaTime > dropInterval) {
-            currentY++;
-            if (collision()) {
-                currentY--;
-                lockPiece();
-            }
-            draw();
+        if (time - lastTime > dropInterval) {
+            moveDown();
             lastTime = time;
         }
-
         requestAnimationFrame(gameLoop);
     }
 
@@ -315,6 +345,25 @@
         lastTime = 0;
         requestAnimationFrame(gameLoop);
     }
+
+    // Назначение обработчиков кнопок
+    leftBtn.addEventListener('click', moveLeft);
+    rightBtn.addEventListener('click', moveRight);
+    rotateBtn.addEventListener('click', rotatePiece);
+    downBtn.addEventListener('click', hardDrop);
+
+    // Назначение обработчиков клавиатуры
+    document.addEventListener('keydown', (e) => {
+        if (!currentPiece || gameOverFlag) return;
+
+        switch (e.key) {
+            case 'ArrowLeft': moveLeft(); break;
+            case 'ArrowRight': moveRight(); break;
+            case 'ArrowDown': moveDown(); break;
+            case 'ArrowUp': rotatePiece(); break;
+            case ' ': hardDrop(); break; // Пробел для мгновенного падения
+        }
+    });
 
     // Запуск игры
     updateLeaderboard();

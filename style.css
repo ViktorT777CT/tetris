@@ -1,0 +1,52 @@
+
+body {
+    font-family: Arial, sans-serif;
+    background: white;
+    color: black;
+    margin: 0;
+    padding: 10px;
+    text-align: center;
+    touch-action: manipulation;
+}
+canvas {
+    display: block;
+    background: white;
+    border: 2px solid black;
+    padding: 1px;
+}
+.wrap{
+    margin: auto;
+    height: 100vh;
+    width: 100vw;
+}
+.info {
+    margin: 10px;
+    font-size: 18px;
+}
+table {
+    margin: 10px auto;
+    border-collapse: collapse;
+}
+td, th {
+    border: 1px solid black;
+    padding: 5px 10px;
+}
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+.control-btn {
+    padding: 15px 20px;
+    font-size: 18px;
+    background: #f0f0f0;
+    border: 2px solid black;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.display{
+    display: flex;
+    justify-content: center;
+}

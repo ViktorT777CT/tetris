@@ -356,12 +356,38 @@ function gameOver() {
     lastTime = 0;
     requestAnimationFrame(gameLoop);
 }
+// Добавляем переменные для управления скоростью
+let speedDropInterval = null;
+const MIN_DROP_INTERVAL = 100; // Минимальная скорость (100 мс)
+
+// Функция для ускоренного падения при удержании кнопки
+function startSpeedDrop() {
+    // Если уже есть интервал, сначала очищаем его
+    if (speedDropInterval) clearInterval(speedDropInterval);
+
+    // Устанавливаем быструю скорость
+    speedDropInterval = setInterval(moveDown, MIN_DROP_INTERVAL);
+}
+
+// Функция для остановки ускоренного падения
+function stopSpeedDrop() {
+    if (speedDropInterval) {
+        clearInterval(speedDropInterval);
+        speedDropInterval = null;
+    }
+}
+
+// Модифицируем обработчики для кнопки "вниз"
+downBtn.addEventListener('mousedown', startSpeedDrop);
+downBtn.addEventListener('touchstart', startSpeedDrop);
+downBtn.addEventListener('mouseup', stopSpeedDrop);
+downBtn.addEventListener('touchend', stopSpeedDrop);
+downBtn.addEventListener('mouseleave', stopSpeedDrop);
 
 // Назначение обработчиков кнопок
 leftBtn.addEventListener('click', moveLeft);
 rightBtn.addEventListener('click', moveRight);
 rotateBtn.addEventListener('click', rotatePiece);
-downBtn.addEventListener('click', hardDrop);
 
 // Назначение обработчиков клавиатуры
 document.addEventListener('keydown', (e) => {

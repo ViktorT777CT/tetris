@@ -1,6 +1,8 @@
 // Настройки игры
 const canvas = document.getElementById('tetris');
 const ctx = canvas.getContext('2d');
+const nextPieceCanvas = document.getElementById('next-piece');
+const nextPieceCtx = nextPieceCanvas.getContext('2d');
 const blockSize = 20;
 const rows = 20;
 const cols = 10;
@@ -19,8 +21,9 @@ const shapes = [
     [[0, 1, 1], [1, 1, 0]]  // Z
 ];
 
-// Текущая фигура
+// Текущая и следующая фигура
 let currentPiece = null;
+let nextPiece = null;
 let currentX = 0;
 let currentY = 0;
 let currentRotation = 0;
@@ -36,12 +39,17 @@ let topScore = localStorage.getItem('topScore') || 0;
 let dropInterval = 1000; // Начальная скорость: 1 секунда
 let lastTime = 0;
 let gameOverFlag = false;
+let isPaused = false;
+let gameStarted = false;
 
 // Элементы управления
 const leftBtn = document.getElementById('left-btn');
 const rightBtn = document.getElementById('right-btn');
 const rotateBtn = document.getElementById('rotate-btn');
 const downBtn = document.getElementById('down-btn');
+const startPauseBtn = document.getElementById('start-pause-btn');
+const restartBtn = document.getElementById('restart-btn');
+const gameStateDisplay = document.getElementById('game-state');
 
 // Обновление таблицы рекордов
 function updateLeaderboard() {
@@ -50,19 +58,87 @@ function updateLeaderboard() {
     document.getElementById('my-best').textContent = myBestScore;
     document.getElementById('top-player').textContent = topPlayer;
     document.getElementById('top-score').textContent = topScore;
+
+    // Обновление состояния игры
+    if (gameOverFlag) {
+        gameStateDisplay.textContent = 'GAME OVER';
+    } else if (isPaused) {
+        gameStateDisplay.textContent = 'PAUSED';
+    } else if (gameStarted) {
+        gameStateDisplay.textContent = 'PLAYING';
+    } else {
+        gameStateDisplay.textContent = 'READY';
+    }
 }
 
 // Создание новой фигуры
 function newPiece() {
-    const shape = shapes[Math.floor(Math.random() * shapes.length)];
-    currentPiece = shape;
-    currentX = Math.floor(cols / 2) - Math.floor(shape[0].length / 2);
+    // Если следующая фигура не определена, создаем случайную
+    if (!nextPiece) {
+        nextPiece = shapes[Math.floor(Math.random() * shapes.length)];
+    }
+
+    currentPiece = nextPiece;
+    nextPiece = shapes[Math.floor(Math.random() * shapes.length)];
+    currentX = Math.floor(cols / 2) - Math.floor(currentPiece[0].length / 2);
     currentY = 0;
     currentRotation = 0;
+
+    // Отрисовка следующей фигуры
+    drawNextPiece();
 
     // Проверка на проигрыш
     if (collision()) {
         gameOver();
+    }
+}
+
+// Отрисовка следующей фигуры
+function drawNextPiece() {
+    // Очищаем canvas
+    nextPieceCtx.fillStyle = 'white';
+    nextPieceCtx.fillRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+
+    if (!nextPiece) return;
+
+    // Размер блока для preview
+    const previewBlockSize = 15;
+    // Центрирование фигуры
+    const offsetX = (nextPieceCanvas.width - nextPiece[0].length * previewBlockSize) / 2;
+    const offsetY = (nextPieceCanvas.height - nextPiece.length * previewBlockSize) / 2;
+
+    // Отрисовка фигуры
+    for (let y = 0; y < nextPiece.length; y++) {
+        for (let x = 0; x < nextPiece[y].length; x++) {
+            if (nextPiece[y][x] !== 0) {
+                // Черная рамка
+                nextPieceCtx.fillStyle = 'black';
+                nextPieceCtx.fillRect(
+                    offsetX + x * previewBlockSize,
+                    offsetY + y * previewBlockSize,
+                    previewBlockSize,
+                    previewBlockSize
+                );
+
+                // Белый внутренний прямоугольник
+                nextPieceCtx.fillStyle = 'white';
+                nextPieceCtx.fillRect(
+                    offsetX + x * previewBlockSize + 2,
+                    offsetY + y * previewBlockSize + 2,
+                    previewBlockSize - 4,
+                    previewBlockSize - 4
+                );
+
+                // Черный внутренний квадрат
+                nextPieceCtx.fillStyle = 'black';
+                nextPieceCtx.fillRect(
+                    offsetX + x * previewBlockSize + (previewBlockSize - 8) / 2,
+                    offsetY + y * previewBlockSize + (previewBlockSize - 8) / 2,
+                    8,
+                    8
+                );
+            }
+        }
     }
 }
 
@@ -232,7 +308,6 @@ function draw() {
         for (let y = 0; y < currentPiece.length; y++) {
             for (let x = 0; x < currentPiece[y].length; x++) {
                 if (currentPiece[y][x] !== 0) {
-
                     // Отступ между блоками (1 пиксель)
                     const blockGap = 1;
                     // Черная рамка
@@ -271,6 +346,7 @@ function draw() {
 
 // Движение влево
 function moveLeft() {
+    if (!gameStarted || isPaused || gameOverFlag) return;
     currentX--;
     if (collision()) currentX++;
     draw();
@@ -278,6 +354,7 @@ function moveLeft() {
 
 // Движение вправо
 function moveRight() {
+    if (!gameStarted || isPaused || gameOverFlag) return;
     currentX++;
     if (collision()) currentX--;
     draw();
@@ -285,6 +362,7 @@ function moveRight() {
 
 // Движение вниз
 function moveDown() {
+    if (!gameStarted || isPaused || gameOverFlag) return;
     currentY++;
     if (collision()) {
         currentY--;
@@ -295,6 +373,7 @@ function moveDown() {
 
 // Быстрое падение
 function hardDrop() {
+    if (!gameStarted || isPaused || gameOverFlag) return;
     while (!collision()) {
         currentY++;
     }
@@ -305,6 +384,7 @@ function hardDrop() {
 
 // Вращение фигуры
 function rotatePiece() {
+    if (!gameStarted || isPaused || gameOverFlag) return;
     const rotated = currentPiece[0].map((_, i) =>
         currentPiece.map(row => row[i]).reverse()
     );
@@ -318,7 +398,10 @@ function rotatePiece() {
 
 // Игровой цикл
 function gameLoop(time = 0) {
-    if (gameOverFlag) return;
+    if (gameOverFlag || isPaused || !gameStarted) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
     if (time - lastTime > dropInterval) {
         moveDown();
         lastTime = time;
@@ -329,7 +412,8 @@ function gameLoop(time = 0) {
 // Конец игры
 function gameOver() {
     gameOverFlag = true;
-    alert(`Игра окончена! Ваш счет: ${score}`);
+    gameStarted = false;
+    startPauseBtn.textContent = 'START';
 
     // Обновление рекордов
     if (score > myBestScore) {
@@ -344,24 +428,58 @@ function gameOver() {
         localStorage.setItem('topPlayer', topPlayer);
     }
 
-    // Сброс игры
+    updateLeaderboard();
+}
+
+// Сброс игры
+function resetGame() {
     grid = Array(rows).fill().map(() => Array(cols).fill(0));
     score = 0;
     level = 1;
     dropInterval = 1000;
     gameOverFlag = false;
+    isPaused = false;
+    gameStarted = false;
+    currentPiece = null;
+    nextPiece = null;
     updateLeaderboard();
     newPiece();
     draw();
     lastTime = 0;
-    requestAnimationFrame(gameLoop);
+    startPauseBtn.textContent = 'START';
 }
+
+// Управление игрой (старт/пауза)
+function toggleGame() {
+    if (gameOverFlag) {
+        resetGame();
+        gameStarted = true;
+        startPauseBtn.textContent = 'PAUSE';
+        requestAnimationFrame(gameLoop);
+    } else if (!gameStarted) {
+        gameStarted = true;
+        isPaused = false;
+        startPauseBtn.textContent = 'PAUSE';
+        requestAnimationFrame(gameLoop);
+    } else if (isPaused) {
+        isPaused = false;
+        startPauseBtn.textContent = 'PAUSE';
+        lastTime = performance.now(); // Сброс таймера при возобновлении
+        requestAnimationFrame(gameLoop);
+    } else {
+        isPaused = true;
+        startPauseBtn.textContent = 'RESUME';
+    }
+    updateLeaderboard();
+}
+
 // Добавляем переменные для управления скоростью
 let speedDropInterval = null;
 const MIN_DROP_INTERVAL = 100; // Минимальная скорость (100 мс)
 
 // Функция для ускоренного падения при удержании кнопки
 function startSpeedDrop() {
+    if (!gameStarted || isPaused || gameOverFlag) return;
     // Если уже есть интервал, сначала очищаем его
     if (speedDropInterval) clearInterval(speedDropInterval);
 
@@ -388,25 +506,35 @@ downBtn.addEventListener('mouseleave', stopSpeedDrop);
 leftBtn.addEventListener('click', moveLeft);
 rightBtn.addEventListener('click', moveRight);
 rotateBtn.addEventListener('click', rotatePiece);
+startPauseBtn.addEventListener('click', toggleGame);
+restartBtn.addEventListener('click', resetGame);
 
 // Назначение обработчиков клавиатуры
 document.addEventListener('keydown', (e) => {
-    if (!currentPiece || gameOverFlag) return;
+    if (!currentPiece || (!gameStarted && e.key !== ' ') || gameOverFlag) return;
 
     switch (e.key) {
         case 'ArrowLeft': moveLeft(); break;
         case 'ArrowRight': moveRight(); break;
         case 'ArrowDown': moveDown(); break;
         case 'ArrowUp': rotatePiece(); break;
-        case ' ': hardDrop(); break; // Пробел для мгновенного падения
+        case ' ':
+            if (gameStarted) {
+                hardDrop();
+            } else {
+                toggleGame();
+            }
+            break;
+        case 'p':
+        case 'P':
+            if (gameStarted) toggleGame();
+            break;
     }
 });
 
 // Запуск игры
 updateLeaderboard();
-newPiece();
-draw();
-gameLoop();
+resetGame();
 
 // Интеграция с Telegram
 Telegram.WebApp.expand();

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div class="wrap">
     <div class="display">
         <div>
@@ -15,11 +16,11 @@
         <div>
             <div class="info">SCORE <br><span id="score">0</span></div>
             <div class="info">HI-SCORE <br><span id="my-best">0</span></div>
-
             <div class="info">LEVEL: <span id="level">1</span></div>
-
-
-
+            <div class="info" id="game-state">READY</div>
+            <div class="next-piece-container">
+                <canvas id="next-piece" width="80" height="80"></canvas>
+            </div>
             <table style="display: none">
                 <tr>
                     <th>Лучший игрок</th>
@@ -32,16 +33,31 @@
             </table>
         </div>
     </div>
+
     <div class="controls">
-        <div class="control-btn" id="left-btn">←</div>
-        <div class="control-btn" id="right-btn">→</div>
-        <div class="control-btn" id="rotate-btn">↻</div>
-        <div class="control-btn" id="down-btn">↓</div>
+        <div class="control__btn-start" id="start-pause-btn">START</div>
+        <div class="control__btn-start" id="restart-btn">RESTART</div>
+
     </div>
+    <div class="control__block">
+        <div>
+            <div class="controls">
+                <div class="control-btn" id="left-btn">←</div>
+                <div class="control-btn" id="right-btn">→</div>
+            </div>
+            <div class="controls">
+                <div class="control-btn" id="down-btn">↓</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-btn" id="rotate-btn">↻</div>
+        </div>
+
+    </div>
+
+
 </div>
-
-
-
 
 <script src="js.js"></script>
 </body>
